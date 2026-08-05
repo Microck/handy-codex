@@ -25,7 +25,7 @@
   },
   "bundle": {
     "active": true,
-    "createUpdaterArtifacts": true,
+    "createUpdaterArtifacts": false,
     "targets": "all",
     "resources": ["resources/**/*"],
     "license": "MIT",
@@ -38,10 +38,7 @@
     ],
     "macOS": {
       "files": {},
-      "hardenedRuntime": true,
-      "minimumSystemVersion": "10.15",
-      "signingIdentity": "-",
-      "entitlements": "Entitlements.plist"
+      "minimumSystemVersion": "10.15"
     },
     "linux": {
       "deb": {
@@ -70,7 +67,6 @@
       }
     },
     "windows": {
-      "signCommand": "trusted-signing-cli -e https://eus.codesigning.azure.net/ -a CJ-Signing -c cjpais-dev -d Handy %1",
       "nsis": {
         "template": "nsis/installer.nsi"
       }
