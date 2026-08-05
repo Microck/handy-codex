@@ -67,6 +67,7 @@ pub async fn retry_history_entry_transcription(
     transcription_manager: State<'_, Arc<TranscriptionManager>>,
     id: i64,
 ) -> Result<(), String> {
+    log::debug!("Retrying transcription for history entry {}", id);
     let entry = history_manager
         .get_entry_by_id(id)
         .await
@@ -74,8 +75,15 @@ pub async fn retry_history_entry_transcription(
         .ok_or_else(|| format!("History entry {} not found", id))?;
 
     let audio_path = history_manager.get_audio_file_path(&entry.file_name);
-    let samples = crate::audio_toolkit::read_wav_samples(&audio_path)
-        .map_err(|e| format!("Failed to load audio: {}", e))?;
+    let samples = crate::audio_toolkit::read_wav_samples(&audio_path).map_err(|e| {
+        log::error!(
+            "Failed to load audio for history entry {} from {}: {}",
+            id,
+            audio_path.display(),
+            e
+        );
+        format!("Failed to load audio: {}", e)
+    })?;
 
     if samples.is_empty() {
         return Err("Recording has no audio samples".to_string());
@@ -87,7 +95,10 @@ pub async fn retry_history_entry_transcription(
     let transcription = tauri::async_runtime::spawn_blocking(move || tm.transcribe(samples))
         .await
         .map_err(|e| format!("Transcription task panicked: {}", e))?
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            log::error!("Transcription failed for history entry {}: {}", id, e);
+            format!("Transcription failed: {}", e)
+        })?;
 
     if transcription.is_empty() {
         return Err("Recording contains no speech".to_string());

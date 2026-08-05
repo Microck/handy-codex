@@ -1,21 +1,49 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { check } from "@tauri-apps/plugin-updater";
-import { relaunch } from "@tauri-apps/plugin-process";
+
 import { listen } from "@tauri-apps/api/event";
+import { getVersion } from "@tauri-apps/api/app";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { arch, platform } from "@tauri-apps/plugin-os";
 import { ProgressBar } from "../shared";
 import { useSettings } from "../../hooks/useSettings";
 import { commands } from "../../bindings";
-import {
-  resolvePortableInstallerUrl,
-  PORTABLE_RELEASES_URL,
-} from "./portableInstaller";
+import { PORTABLE_RELEASES_URL } from "./portableInstaller";
 
 interface UpdateCheckerProps {
   className?: string;
 }
+
+const RELEASES_API_URL =
+  "https://api.github.com/repos/Microck/handy-codex/releases/latest";
+
+type GitHubRelease = {
+  tag_name: string;
+  html_url: string;
+  assets: Array<{ name: string; browser_download_url: string }>;
+};
+
+const compareVersions = (left: string, right: string): number => {
+  const parse = (version: string) =>
+    version
+      .replace(/^v/i, "")
+      .split(".")
+      .map((part) => Number.parseInt(part, 10) || 0);
+  const a = parse(left);
+  const b = parse(right);
+  for (let index = 0; index < Math.max(a.length, b.length); index += 1) {
+    if ((a[index] ?? 0) !== (b[index] ?? 0)) {
+      return (a[index] ?? 0) - (b[index] ?? 0);
+    }
+  }
+  return 0;
+};
+
+const findWindowsInstaller = (release: GitHubRelease, architecture: string) => {
+  const suffix =
+    architecture === "aarch64" ? "_arm64-setup.exe" : "_x64-setup.exe";
+  return release.assets.find((asset) => asset.name.endsWith(suffix));
+};
 
 const UpdateChecker: React.FC<UpdateCheckerProps> = ({ className = "" }) => {
   const { t } = useTranslation();
@@ -37,8 +65,6 @@ const UpdateChecker: React.FC<UpdateCheckerProps> = ({ className = "" }) => {
 
   const upToDateTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const isManualCheckRef = useRef(false);
-  const downloadedBytesRef = useRef(0);
-  const contentLengthRef = useRef(0);
 
   useEffect(() => {
     // Wait for settings to load before doing anything
@@ -75,15 +101,28 @@ const UpdateChecker: React.FC<UpdateCheckerProps> = ({ className = "" }) => {
 
     try {
       setIsChecking(true);
-      const update = await check();
+      const [currentVersion, response] = await Promise.all([
+        getVersion(),
+        fetch(RELEASES_API_URL, {
+          headers: { Accept: "application/vnd.github+json" },
+          cache: "no-store",
+        }),
+      ]);
+      if (!response.ok) {
+        throw new Error(`GitHub Releases returned HTTP ${response.status}`);
+      }
+      const release = (await response.json()) as GitHubRelease;
+      const latestVersion = release.tag_name.replace(/^v/i, "");
 
-      if (update) {
+      if (compareVersions(latestVersion, currentVersion) > 0) {
         setUpdateAvailable(true);
         setShowUpToDate(false);
-        // Portable installs can't self-update in place — the manual dialog links
-        // straight at the matching installer from this manifest instead.
+        const installer =
+          platform() === "windows"
+            ? findWindowsInstaller(release, arch())
+            : undefined;
         setPortableInstallerUrl(
-          resolvePortableInstallerUrl(update.rawJson, platform(), arch()),
+          installer?.browser_download_url ?? release.html_url,
         );
       } else {
         setUpdateAvailable(false);
@@ -124,42 +163,15 @@ const UpdateChecker: React.FC<UpdateCheckerProps> = ({ className = "" }) => {
     try {
       setIsInstalling(true);
       setDownloadProgress(0);
-      downloadedBytesRef.current = 0;
-      contentLengthRef.current = 0;
-      const update = await check();
-
-      if (!update) {
-        console.log("No update available during install attempt");
-        return;
-      }
-
-      await update.downloadAndInstall((event) => {
-        switch (event.event) {
-          case "Started":
-            downloadedBytesRef.current = 0;
-            contentLengthRef.current = event.data.contentLength ?? 0;
-            break;
-          case "Progress":
-            downloadedBytesRef.current += event.data.chunkLength;
-            const progress =
-              contentLengthRef.current > 0
-                ? Math.round(
-                    (downloadedBytesRef.current / contentLengthRef.current) *
-                      100,
-                  )
-                : 0;
-            setDownloadProgress(Math.min(progress, 100));
-            break;
-        }
-      });
-      await relaunch();
+      // Unsigned releases cannot be installed by Tauri's secure updater. Open
+      // the matching GitHub installer instead; Windows can update the existing
+      // installation when the user runs it after Handy exits.
+      await openUrl(portableInstallerUrl);
     } catch (error) {
       console.error("Failed to install update:", error);
     } finally {
       setIsInstalling(false);
       setDownloadProgress(0);
-      downloadedBytesRef.current = 0;
-      contentLengthRef.current = 0;
     }
   };
 
