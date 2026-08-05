@@ -1,0 +1,51 @@
+name: Sync upstream Handy
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 1"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Merge upstream main
+        id: merge
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/cjpais/Handy.git
+          git fetch --no-tags upstream main
+          branch="sync/upstream-$(date -u +%Y%m%d-%H%M%S)"
+          git switch -c "$branch"
+          if ! git merge --no-edit upstream/main; then
+            git merge --abort
+            echo "Upstream changes conflict with fork changes. Resolve manually instead of rewriting main."
+            exit 1
+          fi
+          git push --set-upstream origin "$branch"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Open sync pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ steps.merge.outputs.branch }}
+        run: |
+          gh pr create \
+            --repo "$GITHUB_REPOSITORY" \
+            --base main \
+            --head "$BRANCH" \
+            --title "chore: sync upstream Handy" \
+            --body "Automated upstream sync from cjpais/Handy/main. Review fork-specific Codex and branding changes before merging."

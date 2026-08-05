@@ -5,7 +5,7 @@
   /* Near-opaque app surface (theme.css --color-background at 98%). Auto-flips
      light/dark with --color-background, so no dark-mode override is needed. */
   --s-surface: color-mix(in srgb, var(--color-background) 98%, transparent);
-  /* Accent = logo pink; flips automatically via --color-logo-primary. */
+  /* Accent = fork blue; flips automatically via --color-logo-primary. */
   --s-accent: var(--color-logo-primary);
   --s-accent-soft: color-mix(
     in srgb,
@@ -36,8 +36,7 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Accent uses the lighter logo pink in dark — reads better on the dark
-       surface than the deeper UI pink. */
+    /* Accent uses the lighter blue in dark mode for contrast. */
     --s-accent-soft: color-mix(
       in srgb,
       var(--color-logo-primary) 20%,

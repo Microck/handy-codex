@@ -36,7 +36,11 @@ pub enum EngineType {
     GigaAM,
     Canary,
     Cohere,
+    /// Remote transcription through the user's existing Codex login.
+    CodexAsr,
 }
+
+pub const CODEX_ASR_MODEL_ID: &str = "codex-chatgpt-asr";
 
 /// Where a model comes from and how Handy obtains it — the routing discriminant
 /// for downloading and on-disk resolution.
@@ -525,6 +529,38 @@ impl ModelManager {
         }
 
         let mut available_models = HashMap::new();
+
+        // ChatGPT/Codex transcription is a remote provider rather than a local
+        // model file. It lives in the same registry so the existing selector and
+        // selected_model setting can drive it without changing local downloads.
+        available_models.insert(
+            CODEX_ASR_MODEL_ID.to_string(),
+            ModelInfo {
+                id: CODEX_ASR_MODEL_ID.to_string(),
+                name: "ChatGPT / Codex".to_string(),
+                description: "Remote transcription using your existing Codex login.".to_string(),
+                filename: String::new(),
+                source: ModelSource::Url {
+                    url: String::new(),
+                    sha256: None,
+                },
+                size_mb: 0,
+                is_downloaded: true,
+                is_downloading: false,
+                partial_size: 0,
+                is_directory: false,
+                engine_type: EngineType::CodexAsr,
+                accuracy_score: 0.0,
+                speed_score: 0.0,
+                supports_translation: false,
+                is_recommended: false,
+                supported_languages: Vec::new(),
+                supports_language_selection: false,
+                is_custom: false,
+                supports_streaming: false,
+                supports_language_detection: true,
+            },
+        );
 
         // Whisper supported languages (99 languages from tokenizer)
         let whisper_languages: Vec<String> = vec![
@@ -1370,6 +1406,12 @@ impl ModelManager {
         let mut vanished_alternates: Vec<String> = Vec::new();
 
         for model in models.values_mut() {
+            if model.id == CODEX_ASR_MODEL_ID {
+                model.is_downloaded = true;
+                model.is_downloading = false;
+                model.partial_size = 0;
+                continue;
+            }
             if let ModelSource::HuggingFace { repo_id, revision } = &model.source {
                 // A models-dir copy counts too: mirror-fallback downloads land
                 // there, and it makes manual drop-ins of catalog files work.

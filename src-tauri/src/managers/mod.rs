@@ -1,4 +1,5 @@
 pub mod audio;
+pub mod codex_asr;
 pub mod gguf_meta;
 pub mod history;
 pub mod model;

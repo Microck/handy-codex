@@ -70,8 +70,9 @@ impl CodexAsrClient {
             anyhow::bail!(message);
         }
 
-        let response: TranscriptionResponse = serde_json::from_str(&body)
-            .with_context(|| format!("Codex transcription returned invalid JSON: {}", clip(&body)))?;
+        let response: TranscriptionResponse = serde_json::from_str(&body).with_context(|| {
+            format!("Codex transcription returned invalid JSON: {}", clip(&body))
+        })?;
         Ok(response.text.trim().to_string())
     }
 }
@@ -204,7 +205,10 @@ mod tests {
             "https://api.openai.com/auth": { "chatgpt_account_id": "acct_test" }
         });
         let encoded = base64_json(&payload);
-        assert_eq!(account_id_from_jwt(&format!("{header}.{encoded}.sig")), Some("acct_test".into()));
+        assert_eq!(
+            account_id_from_jwt(&format!("{header}.{encoded}.sig")),
+            Some("acct_test".into())
+        );
     }
 
     #[test]
@@ -212,7 +216,10 @@ mod tests {
         let wav = encode_wav(&[0.0, 1.0, -1.0]).unwrap();
         assert_eq!(&wav[0..4], b"RIFF");
         assert_eq!(&wav[8..12], b"WAVE");
-        assert_eq!(u32::from_le_bytes(wav[24..28].try_into().unwrap()), SAMPLE_RATE);
+        assert_eq!(
+            u32::from_le_bytes(wav[24..28].try_into().unwrap()),
+            SAMPLE_RATE
+        );
         assert_eq!(u16::from_le_bytes(wav[34..36].try_into().unwrap()), 16);
     }
 
@@ -231,8 +238,16 @@ mod tests {
             let c = chunk.get(2).copied().unwrap_or(0) as u32;
             out.push(alphabet[((a >> 2) & 63) as usize] as char);
             out.push(alphabet[(((a & 3) << 4) | (b >> 4)) as usize] as char);
-            out.push(if chunk.len() > 1 { alphabet[(((b & 15) << 2) | (c >> 6)) as usize] as char } else { '=' });
-            out.push(if chunk.len() > 2 { alphabet[(c & 63) as usize] as char } else { '=' });
+            out.push(if chunk.len() > 1 {
+                alphabet[(((b & 15) << 2) | (c >> 6)) as usize] as char
+            } else {
+                '='
+            });
+            out.push(if chunk.len() > 2 {
+                alphabet[(c & 63) as usize] as char
+            } else {
+                '='
+            });
         }
         out
     }

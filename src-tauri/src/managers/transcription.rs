@@ -1,5 +1,6 @@
 use crate::audio_toolkit::{apply_custom_words, filter_transcription_output};
 use crate::managers::audio::AudioRecordingManager;
+use crate::managers::codex_asr::CodexAsrClient;
 use crate::managers::model::{EngineType, ModelManager};
 use crate::settings::{
     get_settings, AppSettings, ModelUnloadTimeout, OrtAcceleratorSetting,
@@ -178,6 +179,7 @@ enum LoadedEngine {
     GigaAM(GigaAMModel),
     Canary(CanaryModel),
     Cohere(CohereModel),
+    CodexAsr(CodexAsrClient),
 }
 
 /// RAII guard that clears the `is_loading` flag and notifies waiters on drop.
@@ -507,7 +509,13 @@ impl TranscriptionManager {
             return Err(anyhow::anyhow!(error_msg));
         }
 
-        let model_path = self.model_manager.get_model_path(model_id)?;
+        let model_path = if matches!(&model_info.engine_type, EngineType::CodexAsr) {
+            // Remote providers do not have a local model path. The local loading
+            // branches below ignore this placeholder.
+            std::path::PathBuf::new()
+        } else {
+            self.model_manager.get_model_path(model_id)?
+        };
 
         // Drop the current engine BEFORE building the new one so transcribe-cpp
         // frees the previous native context first — avoids holding two models at
@@ -669,6 +677,7 @@ impl TranscriptionManager {
                 })?;
                 LoadedEngine::Cohere(engine)
             }
+            EngineType::CodexAsr => LoadedEngine::CodexAsr(CodexAsrClient::new()),
         };
 
         // Update the current engine and model ID
@@ -1347,6 +1356,9 @@ impl TranscriptionManager {
                             .map(|r| r.text)
                             .map_err(|e| anyhow::anyhow!("Cohere transcription failed: {}", e))
                     }
+                    LoadedEngine::CodexAsr(client) => client
+                        .transcribe(&audio, &validated_language)
+                        .map_err(|e| anyhow::anyhow!("Codex transcription failed: {}", e)),
                 }
             }));
 
