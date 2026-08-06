@@ -1,14 +1,27 @@
-# Handy
+# Handy Codex
 
 [![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/invite/WVBeWsNXK4)
 
 **A free, open source, and extensible speech-to-text application that works completely offline.**
 
-Handy is a cross-platform desktop application that provides simple, privacy-focused speech transcription. Press a shortcut, speak, and have your words appear in any text field. This happens on your own computer without sending any information to the cloud.
+Handy Codex is a community fork of [Handy](https://github.com/cjpais/Handy), a cross-platform desktop application that provides simple, privacy-focused speech transcription. Press a shortcut, speak, and have your words appear in any text field. This happens on your own computer without sending any information to the cloud.
 
-## Why Handy?
+## wtf (why this fork)
 
-Handy was created to fill the gap for a truly open source, extensible speech-to-text tool. As stated on [handy.computer](https://handy.computer):
+Handy Codex exists because I wanted Handy's local speech-to-text workflow with an additional Codex-powered option. Upstream Handy is built around local models. This fork adds **ChatGPT / Codex** as a selectable transcription provider, so you can use your existing Codex login for remote transcription when you prefer it.
+
+What is different here:
+
+- **Codex transcription**: choose ChatGPT / Codex from the model selector. Handy Codex reads the existing Codex `auth.json` login and sends recordings to the ChatGPT transcription endpoint. No separate API key is required.
+- **Local models remain available**: Whisper, Parakeet, and the existing offline workflow are still included. Codex is an additional option, not a replacement for local transcription.
+
+This is not an official Handy release and is not affiliated with or endorsed by the Handy maintainers. The fork follows upstream changes through its own repository so these additions can evolve independently.
+
+For the upstream project, see [cjpais/Handy](https://github.com/cjpais/Handy). For this fork's releases, issues, and changes, use [Microck/handy-codex](https://github.com/Microck/handy-codex).
+
+## Why Handy Codex?
+
+The upstream Handy project was created to fill the gap for a truly open source, extensible speech-to-text tool. As stated on [handy.computer](https://handy.computer):
 
 - **Free**: Accessibility tooling belongs in everyone's hands, not behind a paywall
 - **Open Source**: Together we can build further. Extend Handy for yourself and contribute to something bigger
@@ -36,10 +49,8 @@ The process is entirely local:
 
 ### Installation
 
-1. Download the latest release from the [releases page](https://github.com/cjpais/Handy/releases) or the [website](https://handy.computer)
-   - **macOS**: Also available via [Homebrew cask](https://formulae.brew.sh/cask/handy): `brew install --cask handy`
-   - **Windows**: Also available via [winget](https://github.com/microsoft/winget-pkgs): `winget install cjpais.Handy` \
-     **Note:** The Homebrew cask and winget package are not maintained by the Handy developers.
+1. Download the latest Handy Codex release from the [releases page](https://github.com/Microck/handy-codex/releases)
+   - The upstream Homebrew cask and winget package install Handy, not Handy Codex.
 2. Install the application
 3. Launch Handy and grant necessary system permissions (microphone, accessibility)
 4. Configure your preferred keyboard shortcuts in Settings
@@ -273,40 +284,11 @@ We're actively working on several features and improvements. Contributions and f
 - Abstract and organize Tauri command patterns
 - Investigate tauri-specta for improved type safety and organization
 
-## Verify Release Signatures
+## Release security
 
-Handy release artifacts are signed with Tauri's updater signature format. The public key is stored in [`src-tauri/tauri.conf.json`](src-tauri/tauri.conf.json) under `plugins.updater.pubkey`.
+Handy Codex currently publishes unsigned release installers. Tauri updater artifacts are disabled for this fork, so the application does not silently replace itself from an upstream update endpoint.
 
-To verify a release manually, set `ARTIFACT` to the filename you downloaded, save the `pubkey` value from `src-tauri/tauri.conf.json` to `handy.pub.b64`, then decode the public key and matching `.sig` file from base64 and verify the artifact with `minisign`:
-
-```bash
-# Replace with the file you downloaded
-ARTIFACT="Handy_0.8.1_amd64.AppImage"
-
-python3 - "$ARTIFACT" <<'PY'
-import base64, pathlib, sys
-
-artifact = sys.argv[1]
-
-pub = pathlib.Path("handy.pub.b64").read_text().strip()
-pathlib.Path("handy.pub").write_bytes(base64.b64decode(pub))
-
-sig = pathlib.Path(f"{artifact}.sig").read_text().strip()
-pathlib.Path(f"{artifact}.minisig").write_bytes(base64.b64decode(sig))
-PY
-
-minisign -Vm "$ARTIFACT" \
-  -p handy.pub \
-  -x "$ARTIFACT.minisig"
-```
-
-On success, `minisign` prints:
-
-```text
-Signature and comment signature verified
-```
-
-Do not use `gpg` for these `.sig` files.
+Download installers only from the [Handy Codex releases page](https://github.com/Microck/handy-codex/releases) and review the release notes before installing them. Signed update artifacts may be added later when the fork has its own signing keys and release process.
 
 ## Troubleshooting
 
