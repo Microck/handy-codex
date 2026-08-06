@@ -611,6 +611,14 @@ fn default_post_process_providers() -> Vec<PostProcessProvider> {
             supports_structured_output: true,
         },
         PostProcessProvider {
+            id: "codex_chatgpt".to_string(),
+            label: "ChatGPT / Codex".to_string(),
+            base_url: "https://chatgpt.com/backend-api/codex".to_string(),
+            allow_base_url_edit: false,
+            models_endpoint: Some("/models".to_string()),
+            supports_structured_output: false,
+        },
+        PostProcessProvider {
             id: "zai".to_string(),
             label: "Z.AI".to_string(),
             base_url: "https://api.z.ai/api/paas/v4".to_string(),
@@ -1127,6 +1135,19 @@ pub fn get_recording_retention_period(app: &AppHandle) -> RecordingRetentionPeri
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn default_post_process_providers_include_codex_oauth() {
+        let provider = default_post_process_providers()
+            .into_iter()
+            .find(|provider| provider.id == "codex_chatgpt")
+            .expect("Codex OAuth provider should be available");
+
+        assert_eq!(provider.label, "ChatGPT / Codex");
+        assert_eq!(provider.base_url, "https://chatgpt.com/backend-api/codex");
+        assert_eq!(provider.models_endpoint.as_deref(), Some("/models"));
+        assert!(!provider.supports_structured_output);
+    }
 
     fn default_settings_json() -> serde_json::Value {
         serde_json::to_value(get_default_settings()).unwrap()

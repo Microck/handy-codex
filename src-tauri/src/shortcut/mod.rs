@@ -1198,14 +1198,22 @@ pub async fn fetch_post_process_models(
         .unwrap_or_default();
 
     // Skip fetching if no API key for providers that typically need one
-    if api_key.trim().is_empty() && provider.id != "custom" {
+    if api_key.trim().is_empty() && provider.id != "custom" && provider.id != "codex_chatgpt" {
         return Err(format!(
             "API key is required for {}. Please add an API key to list available models.",
             provider.label
         ));
     }
 
-    crate::llm_client::fetch_models(provider, api_key).await
+    crate::llm_client::fetch_models(
+        provider,
+        api_key,
+        settings
+            .codex_auth_file
+            .as_deref()
+            .map(std::path::Path::new),
+    )
+    .await
 }
 
 #[tauri::command]

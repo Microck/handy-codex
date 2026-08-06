@@ -84,9 +84,9 @@ impl Default for CodexAsrClient {
 }
 
 #[derive(Debug, Clone)]
-struct CodexAuth {
-    access_token: String,
-    account_id: Option<String>,
+pub(crate) struct CodexAuth {
+    pub(crate) access_token: String,
+    pub(crate) account_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -94,7 +94,7 @@ struct TranscriptionResponse {
     text: String,
 }
 
-fn default_auth_file() -> PathBuf {
+pub(crate) fn default_auth_file() -> PathBuf {
     let manual_path = std::env::var_os("CODEX_ASR_AUTH_FILE").map(PathBuf::from);
     let codex_home = std::env::var_os("CODEX_HOME").map(PathBuf::from);
     let user_profile = std::env::var_os("USERPROFILE").map(PathBuf::from);
@@ -122,7 +122,7 @@ fn resolve_auth_file(
         .unwrap_or_else(|| PathBuf::from(".codex").join("auth.json"))
 }
 
-fn load_auth(path: &Path) -> Result<CodexAuth> {
+pub(crate) fn load_auth(path: &Path) -> Result<CodexAuth> {
     let body = std::fs::read_to_string(path)
         .with_context(|| format!("Cannot read Codex login file: {}", path.display()))?;
     let root: Value = serde_json::from_str(&body).context("Codex login file is not valid JSON")?;

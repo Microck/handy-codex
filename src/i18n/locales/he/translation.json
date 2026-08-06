@@ -390,6 +390,9 @@
         "appleIntelligence": {
           "unavailable": "Apple Intelligence לא זמין במכשיר הזה. נדרש Mac עם Apple Silicon שמריץ macOS Tahoe (26.0) ומעלה, עם Apple Intelligence מופעל בהגדרות המערכת."
         },
+        "codexOAuth": {
+          "description": "Uses your existing ChatGPT / Codex OAuth login from auth.json. No OpenAI API key is required. Configure the Codex auth file in General settings if it is not detected automatically."
+        },
         "baseUrl": {
           "title": "כתובת URL בסיסית",
           "description": "כתובת ה-API הבסיסית עבור הספק הנבחר. רק ספק מותאם אישית ניתן לעריכה.",
@@ -571,9 +574,9 @@
     "about": {
       "title": "אודות",
       "project": {
-        "title": "About Handy",
-        "description": "Handy is a local speech-to-text app for fast, private dictation.",
-        "details": "Audio stays on your device while local models turn speech into text. Handy also supports global shortcuts, configurable microphones, transcription history, and optional post-processing."
+        "title": "About Handy Codex",
+        "description": "Handy Codex is a community fork that adds ChatGPT / Codex transcription through your existing Codex OAuth login.",
+        "details": "Handy Codex keeps Handy's local Whisper and Parakeet transcription options while adding ChatGPT / Codex models. It also includes global shortcuts, configurable microphones, transcription history, and optional post-processing."
       },
       "version": {
         "title": "גרסה",

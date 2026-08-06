@@ -9,6 +9,7 @@ type PostProcessProviderState = {
   selectedProviderId: string;
   selectedProvider: PostProcessProvider | undefined;
   isCustomProvider: boolean;
+  isCodexProvider: boolean;
   isAppleProvider: boolean;
   appleIntelligenceUnavailable: boolean;
   baseUrl: string;
@@ -57,6 +58,7 @@ export const usePostProcessProviderState = (): PostProcessProviderState => {
   }, [providers, selectedProviderId]);
 
   const isAppleProvider = selectedProvider?.id === APPLE_PROVIDER_ID;
+  const isCodexProvider = selectedProvider?.id === "codex_chatgpt";
   const [appleIntelligenceUnavailable, setAppleIntelligenceUnavailable] =
     useState(false);
 
@@ -102,7 +104,11 @@ export const usePostProcessProviderState = (): PostProcessProviderState => {
         const hasBaseUrl = (provider?.base_url ?? "").trim() !== "";
         const hasApiKey = apiKey.trim() !== "";
 
-        if (provider?.id === "custom" ? hasBaseUrl : hasApiKey) {
+        if (
+          provider?.id === "custom"
+            ? hasBaseUrl
+            : provider?.id === "codex_chatgpt" || hasApiKey
+        ) {
           void fetchPostProcessModels(providerId);
         }
       }
@@ -214,6 +220,7 @@ export const usePostProcessProviderState = (): PostProcessProviderState => {
     selectedProviderId,
     selectedProvider,
     isCustomProvider,
+    isCodexProvider,
     isAppleProvider,
     appleIntelligenceUnavailable,
     baseUrl,

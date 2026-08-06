@@ -261,6 +261,10 @@ async fn post_process_transcription(settings: &AppSettings, transcription: &str)
             Some(system_prompt),
             Some(json_schema),
             disable_reasoning,
+            settings
+                .codex_auth_file
+                .as_deref()
+                .map(std::path::Path::new),
         )
         .await
         {

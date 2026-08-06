@@ -5,7 +5,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashSet;
 use std::error::Error as StdError;
+use std::path::Path;
 use std::sync::{Mutex, OnceLock};
+
+const CODEX_CHATGPT_PROVIDER_ID: &str = "codex_chatgpt";
+const CODEX_RESPONSES_PATH: &str = "/responses";
+const CODEX_MODELS_PATH: &str = "/models";
 
 #[derive(Debug, Serialize)]
 struct ChatMessage {
@@ -312,6 +317,7 @@ pub async fn send_chat_completion(
         None,
         None,
         disable_reasoning,
+        None,
     )
     .await
 }
@@ -334,7 +340,12 @@ pub async fn send_chat_completion_with_schema(
     system_prompt: Option<String>,
     json_schema: Option<Value>,
     disable_reasoning: bool,
+    auth_file: Option<&Path>,
 ) -> Result<Option<String>, String> {
+    if provider.id == CODEX_CHATGPT_PROVIDER_ID {
+        return send_codex_response(provider, model, user_content, system_prompt, auth_file).await;
+    }
+
     let base_url = provider.base_url.trim_end_matches('/');
     let url = format!("{}/chat/completions", base_url);
 
@@ -466,7 +477,12 @@ pub async fn send_chat_completion_with_schema(
 pub async fn fetch_models(
     provider: &PostProcessProvider,
     api_key: String,
+    auth_file: Option<&Path>,
 ) -> Result<Vec<String>, String> {
+    if provider.id == CODEX_CHATGPT_PROVIDER_ID {
+        return fetch_codex_models(provider, auth_file).await;
+    }
+
     let base_url = provider.base_url.trim_end_matches('/');
     let url = format!("{}/models", base_url);
 
@@ -503,28 +519,157 @@ pub async fn fetch_models(
         .await
         .map_err(|e| report_reqwest_error("Failed to parse model list response", &e))?;
 
-    let mut models = Vec::new();
+    Ok(parse_model_ids(parsed))
+}
 
-    // Handle OpenAI format: { data: [ { id: "..." }, ... ] }
-    if let Some(data) = parsed.get("data").and_then(|d| d.as_array()) {
-        for entry in data {
-            if let Some(id) = entry.get("id").and_then(|i| i.as_str()) {
-                models.push(id.to_string());
-            } else if let Some(name) = entry.get("name").and_then(|n| n.as_str()) {
-                models.push(name.to_string());
-            }
-        }
+fn codex_auth_path(auth_file: Option<&Path>) -> std::path::PathBuf {
+    auth_file
+        .filter(|path| !path.as_os_str().is_empty())
+        .map(Path::to_path_buf)
+        .unwrap_or_else(crate::managers::codex_asr::default_auth_file)
+}
+
+fn codex_client(
+    auth_file: Option<&Path>,
+) -> Result<(reqwest::Client, crate::managers::codex_asr::CodexAuth), String> {
+    let auth = crate::managers::codex_asr::load_auth(&codex_auth_path(auth_file))
+        .map_err(|error| error.to_string())?;
+    let mut headers = HeaderMap::new();
+    headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+    headers.insert(
+        AUTHORIZATION,
+        HeaderValue::from_str(&format!("Bearer {}", auth.access_token))
+            .map_err(|error| format!("Invalid Codex authorization header: {error}"))?,
+    );
+    headers.insert("originator", HeaderValue::from_static("Codex Desktop"));
+    headers.insert(
+        USER_AGENT,
+        HeaderValue::from_static("Codex Desktop/26.707.8479.0 (Windows; x64)"),
+    );
+    if let Some(account_id) = auth.account_id.as_deref() {
+        headers.insert(
+            "ChatGPT-Account-Id",
+            HeaderValue::from_str(account_id)
+                .map_err(|error| format!("Invalid Codex account header: {error}"))?,
+        );
     }
-    // Handle array format: [ "model1", "model2", ... ]
-    else if let Some(array) = parsed.as_array() {
-        for entry in array {
-            if let Some(model) = entry.as_str() {
-                models.push(model.to_string());
-            }
-        }
+    let client = reqwest::Client::builder()
+        .default_headers(headers)
+        .build()
+        .map_err(|error| report_reqwest_error("Failed to build Codex HTTP client", &error))?;
+    Ok((client, auth))
+}
+
+async fn send_codex_response(
+    provider: &PostProcessProvider,
+    model: &str,
+    user_content: String,
+    system_prompt: Option<String>,
+    auth_file: Option<&Path>,
+) -> Result<Option<String>, String> {
+    let (client, _) = codex_client(auth_file)?;
+    let url = format!(
+        "{}{}",
+        provider.base_url.trim_end_matches('/'),
+        CODEX_RESPONSES_PATH
+    );
+    let mut request = serde_json::json!({
+        "model": model,
+        "input": user_content,
+        "stream": true,
+        "store": false
+    });
+    if let Some(instructions) = system_prompt {
+        request["instructions"] = Value::String(instructions);
     }
 
-    Ok(models)
+    let response = client
+        .post(&url)
+        .json(&request)
+        .send()
+        .await
+        .map_err(|error| report_reqwest_error("Codex post-processing request failed", &error))?;
+    let status = response.status();
+    let body = response
+        .text()
+        .await
+        .map_err(|error| report_reqwest_error("Failed to read Codex response", &error))?;
+    if !status.is_success() {
+        return Err(match status.as_u16() {
+            401 | 403 => "Codex login expired; sign in again".to_string(),
+            429 => "Codex rate limit reached; try again later".to_string(),
+            code => format!("Codex post-processing failed with HTTP {code}"),
+        });
+    }
+
+    let output = parse_codex_sse_output(&body);
+    Ok((!output.trim().is_empty()).then_some(output))
+}
+
+async fn fetch_codex_models(
+    provider: &PostProcessProvider,
+    auth_file: Option<&Path>,
+) -> Result<Vec<String>, String> {
+    let (client, _) = codex_client(auth_file)?;
+    let url = format!(
+        "{}{}",
+        provider.base_url.trim_end_matches('/'),
+        CODEX_MODELS_PATH
+    );
+    let response = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|error| report_reqwest_error("Codex model request failed", &error))?;
+    let status = response.status();
+    if !status.is_success() {
+        return Err(match status.as_u16() {
+            401 | 403 => "Codex login expired; sign in again".to_string(),
+            code => format!("Codex model request failed with HTTP {code}"),
+        });
+    }
+    let body = response
+        .json::<Value>()
+        .await
+        .map_err(|error| report_reqwest_error("Failed to parse Codex model response", &error))?;
+    Ok(parse_model_ids(body))
+}
+
+fn parse_model_ids(value: Value) -> Vec<String> {
+    let entries = value
+        .get("data")
+        .and_then(Value::as_array)
+        .or_else(|| value.as_array())
+        .cloned()
+        .unwrap_or_default();
+    entries
+        .into_iter()
+        .filter_map(|entry| {
+            entry
+                .get("id")
+                .and_then(Value::as_str)
+                .or_else(|| entry.get("name").and_then(Value::as_str))
+                .or_else(|| entry.as_str())
+                .map(str::to_string)
+        })
+        .collect()
+}
+
+fn parse_codex_sse_output(body: &str) -> String {
+    body.lines()
+        .filter_map(|line| line.strip_prefix("data: "))
+        .filter_map(|data| serde_json::from_str::<Value>(data).ok())
+        .filter_map(|event| {
+            if event.get("type").and_then(Value::as_str) == Some("response.output_text.delta") {
+                event
+                    .get("delta")
+                    .and_then(Value::as_str)
+                    .map(str::to_string)
+            } else {
+                None
+            }
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -532,6 +677,30 @@ mod tests {
     use super::*;
     use std::fmt;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    #[test]
+    fn codex_sse_parser_collects_output_text_deltas() {
+        let body = concat!(
+            "event: response.output_text.delta\n",
+            "data: {\"type\":\"response.output_text.delta\",\"delta\":\"Clean \"}\n\n",
+            "data: {\"type\":\"response.output_text.delta\",\"delta\":\"text\"}\n\n",
+            "data: [DONE]\n\n",
+        );
+
+        assert_eq!(parse_codex_sse_output(body), "Clean text");
+    }
+
+    #[test]
+    fn codex_model_parser_reads_openai_style_model_ids() {
+        let body = serde_json::json!({
+            "data": [
+                {"id": "gpt-5.4", "display_name": "GPT-5.4"},
+                {"id": "gpt-5.3-codex", "display_name": "GPT-5.3 Codex"}
+            ]
+        });
+
+        assert_eq!(parse_model_ids(body), vec!["gpt-5.4", "gpt-5.3-codex"]);
+    }
 
     #[derive(Debug)]
     struct TestError {
