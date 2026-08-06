@@ -160,6 +160,13 @@
     },
     "general": {
       "title": "Загальні",
+      "codexAuth": {
+        "title": "Codex login file",
+        "description": "Handy uses your existing Codex login for ChatGPT transcription. Choose auth.json manually only if automatic detection cannot find it.",
+        "auto": "Automatic detection",
+        "choose": "Choose auth.json",
+        "clear": "Use automatic detection"
+      },
       "shortcut": {
         "title": "Комбінації клавіш",
         "description": "Налаштуйте клавіатурні скорочення для запуску запису мовлення в текст",

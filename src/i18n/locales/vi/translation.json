@@ -178,6 +178,13 @@
     },
     "general": {
       "title": "Chung",
+      "codexAuth": {
+        "title": "Codex login file",
+        "description": "Handy uses your existing Codex login for ChatGPT transcription. Choose auth.json manually only if automatic detection cannot find it.",
+        "auto": "Automatic detection",
+        "choose": "Choose auth.json",
+        "clear": "Use automatic detection"
+      },
       "shortcut": {
         "title": "Phím tắt Handy",
         "description": "Cấu hình phím tắt để kích hoạt ghi âm chuyển đổi giọng nói thành văn bản",

@@ -160,6 +160,13 @@
     },
     "general": {
       "title": "一般",
+      "codexAuth": {
+        "title": "Codex login file",
+        "description": "Handy uses your existing Codex login for ChatGPT transcription. Choose auth.json manually only if automatic detection cannot find it.",
+        "auto": "Automatic detection",
+        "choose": "Choose auth.json",
+        "clear": "Use automatic detection"
+      },
       "shortcut": {
         "title": "Handy 快捷鍵",
         "description": "設定啟動語音轉文字錄製的鍵盤快捷鍵",

@@ -1274,6 +1274,35 @@ pub fn change_app_language_setting(app: AppHandle, language: String) -> Result<(
 
 #[tauri::command]
 #[specta::specta]
+pub fn change_codex_auth_file_setting(app: AppHandle, path: Option<String>) -> Result<(), String> {
+    let path = path
+        .map(|value| {
+            let candidate = std::path::PathBuf::from(value.trim());
+            if !candidate.is_absolute() {
+                return Err("Codex auth file path must be absolute".to_string());
+            }
+            if candidate
+                .file_name()
+                .and_then(|name| name.to_str())
+                .is_none_or(|name| !name.eq_ignore_ascii_case("auth.json"))
+            {
+                return Err("Codex auth file must be named auth.json".to_string());
+            }
+            if !candidate.is_file() {
+                return Err("Codex auth file does not exist".to_string());
+            }
+            Ok(candidate.to_string_lossy().into_owned())
+        })
+        .transpose()?;
+
+    let mut settings = settings::get_settings(&app);
+    settings.codex_auth_file = path;
+    save_accelerator_and_reload_next_use(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn change_show_tray_icon_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     settings.show_tray_icon = enabled;

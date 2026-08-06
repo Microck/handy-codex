@@ -677,7 +677,17 @@ impl TranscriptionManager {
                 })?;
                 LoadedEngine::Cohere(engine)
             }
-            EngineType::CodexAsr => LoadedEngine::CodexAsr(CodexAsrClient::new()),
+            EngineType::CodexAsr => {
+                let settings = get_settings(&self.app_handle);
+                let auth_file = settings
+                    .codex_auth_file
+                    .as_deref()
+                    .filter(|path| !path.trim().is_empty());
+                let client = auth_file
+                    .map(CodexAsrClient::with_auth_file)
+                    .unwrap_or_else(CodexAsrClient::new);
+                LoadedEngine::CodexAsr(client)
+            }
         };
 
         // Update the current engine and model ID

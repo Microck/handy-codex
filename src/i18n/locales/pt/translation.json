@@ -160,6 +160,13 @@
     },
     "general": {
       "title": "Geral",
+      "codexAuth": {
+        "title": "Codex login file",
+        "description": "Handy uses your existing Codex login for ChatGPT transcription. Choose auth.json manually only if automatic detection cannot find it.",
+        "auto": "Automatic detection",
+        "choose": "Choose auth.json",
+        "clear": "Use automatic detection"
+      },
       "shortcut": {
         "title": "Atalhos do Handy",
         "description": "Configure atalhos de teclado para iniciar a gravação de voz para texto",

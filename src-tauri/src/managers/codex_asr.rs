@@ -95,15 +95,31 @@ struct TranscriptionResponse {
 }
 
 fn default_auth_file() -> PathBuf {
-    if let Some(path) = std::env::var_os("CODEX_ASR_AUTH_FILE") {
-        return PathBuf::from(path);
-    }
-    if let Some(path) = std::env::var_os("CODEX_HOME") {
-        return PathBuf::from(path).join("auth.json");
-    }
-    PathBuf::from(std::env::var_os("HOME").unwrap_or_default())
-        .join(".codex")
-        .join("auth.json")
+    let manual_path = std::env::var_os("CODEX_ASR_AUTH_FILE").map(PathBuf::from);
+    let codex_home = std::env::var_os("CODEX_HOME").map(PathBuf::from);
+    let user_profile = std::env::var_os("USERPROFILE").map(PathBuf::from);
+    let home = std::env::var_os("HOME").map(PathBuf::from);
+    resolve_auth_file(
+        manual_path.as_deref(),
+        codex_home.as_deref(),
+        user_profile.as_deref(),
+        home.as_deref(),
+    )
+}
+
+fn resolve_auth_file(
+    manual_path: Option<&Path>,
+    codex_home: Option<&Path>,
+    user_profile: Option<&Path>,
+    home: Option<&Path>,
+) -> PathBuf {
+    manual_path
+        .filter(|path| !path.as_os_str().is_empty())
+        .map(Path::to_path_buf)
+        .or_else(|| codex_home.map(|path| path.join("auth.json")))
+        .or_else(|| user_profile.map(|path| path.join(".codex").join("auth.json")))
+        .or_else(|| home.map(|path| path.join(".codex").join("auth.json")))
+        .unwrap_or_else(|| PathBuf::from(".codex").join("auth.json"))
 }
 
 fn load_auth(path: &Path) -> Result<CodexAuth> {
@@ -226,6 +242,27 @@ mod tests {
     #[test]
     fn empty_audio_encodes_to_header_only() {
         assert_eq!(encode_wav(&[]).unwrap().len(), 44);
+    }
+
+    #[test]
+    fn auth_path_uses_windows_userprofile_when_home_is_missing() {
+        assert_eq!(
+            resolve_auth_file(None, None, Some(Path::new(r"C:\Users\Microck")), None,),
+            PathBuf::from(r"C:\Users\Microck\.codex\auth.json")
+        );
+    }
+
+    #[test]
+    fn manual_auth_path_takes_precedence_over_environment_paths() {
+        assert_eq!(
+            resolve_auth_file(
+                Some(Path::new(r"D:\Shared\auth.json")),
+                Some(Path::new(r"C:\Users\Microck\.codex")),
+                Some(Path::new(r"C:\Users\Microck")),
+                Some(Path::new(r"/home/microck")),
+            ),
+            PathBuf::from(r"D:\Shared\auth.json")
+        );
     }
 
     fn base64_json(value: &Value) -> String {
