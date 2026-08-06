@@ -1,0 +1,3 @@
+# The fork owns its release workflow. Upstream build changes remain reviewable
+# in the reusable build workflow instead of silently replacing fork releases.
+.github/workflows/release.yml merge=ours

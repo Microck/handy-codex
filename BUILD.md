@@ -116,6 +116,18 @@ bun run tauri build
 
 This compiles a release binary and generates platform-specific bundles (deb, rpm, AppImage on Linux; dmg on macOS; msi on Windows).
 
+## Custom branding
+
+The packaged app icon uses `src-tauri/icons/logo.png` as its source asset. Replace that square transparent PNG, then regenerate the platform variants:
+
+```bash
+bun run tauri icon src-tauri/icons/logo.png -o src-tauri/icons
+```
+
+This refreshes the generated PNG, ICO, ICNS, Android, iOS, and Windows icon files under `src-tauri/icons/`. The bundle uses the primary outputs listed in `src-tauri/tauri.conf.json`.
+
+The in-app wordmark is the code-native SVG in `src/components/icons/HandyTextLogo.tsx`. The colored Linux tray states are separate resources in `src-tauri/resources/handy.png`, `recording.png`, and `transcribing.png`. Replace those files separately when a custom brand must also appear in those surfaces. The semantic warning tray assets remain `tray_idle_warning.png` and `tray_idle_warning_dark.png`. Handy has no runtime logo-upload setting.
+
 ## Linux Install (from source)
 
 The raw binary (`src-tauri/target/release/handy`) cannot run standalone — it needs Tauri resource files (tray icons, sounds, VAD model) to be co-located at the expected path.

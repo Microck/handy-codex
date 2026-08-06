@@ -570,6 +570,11 @@
     },
     "about": {
       "title": "Sobre",
+      "project": {
+        "title": "About Handy",
+        "description": "Handy is a local speech-to-text app for fast, private dictation.",
+        "details": "Audio stays on your device while local models turn speech into text. Handy also supports global shortcuts, configurable microphones, transcription history, and optional post-processing."
+      },
       "version": {
         "title": "Versão",
         "description": "Versão atual do Handy"

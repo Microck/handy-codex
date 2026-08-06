@@ -45,6 +45,11 @@ const getLanguageDisplayText = (
 export const isLegacySource = (model: ModelInfo): boolean =>
   typeof model.source === "object" && "Url" in model.source;
 
+// Remote providers share the registry with downloadable models, but have no
+// local file or download size to display.
+const isRemoteProvider = (model: ModelInfo): boolean =>
+  model.id === "codex-chatgpt-asr";
+
 // Extract a GGUF quantization label from a filename, if present (e.g. "Q8_0").
 const getQuantLabel = (filename: string): string | null => {
   const match = filename.match(
@@ -96,6 +101,7 @@ const ModelCard: React.FC<ModelCardProps> = ({
     (state) => state.settings?.debug_mode ?? false,
   );
   const isFeatured = variant === "featured";
+  const isRemote = isRemoteProvider(model);
   // The active model is already loaded — re-selecting it just reloads it for no
   // gain, so it is deliberately not clickable.
   const isClickable = status === "available" || status === "downloadable";
@@ -104,7 +110,8 @@ const ModelCard: React.FC<ModelCardProps> = ({
   const displayName = getTranslatedModelName(model, t);
   const displayDescription = getTranslatedModelDescription(model, t);
   const showModelSize =
-    status === "downloadable" || status === "available" || status === "active";
+    !isRemote &&
+    (status === "downloadable" || status === "available" || status === "active");
   const formattedModelSize = formatModelSize(Number(model.size_mb));
   const quantLabel = getQuantLabel(model.filename);
   const capabilityLanguages = getUniqueCapabilityLanguages(
@@ -182,7 +189,7 @@ const ModelCard: React.FC<ModelCardProps> = ({
             {model.is_custom && (
               <Badge variant="secondary">{t("modelSelector.custom")}</Badge>
             )}
-            {isLegacySource(model) && (
+            {isLegacySource(model) && !isRemote && (
               <Badge variant="secondary">{t("modelSelector.legacy")}</Badge>
             )}
             {status === "switching" && (

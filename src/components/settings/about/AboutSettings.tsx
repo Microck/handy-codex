@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import packageMetadata from "../../../../package.json";
 import { getVersion } from "@tauri-apps/api/app";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { SettingsGroup } from "../../ui/SettingsGroup";
@@ -13,7 +14,7 @@ import { LogDirectory } from "../debug";
 
 export const AboutSettings: React.FC = () => {
   const { t } = useTranslation();
-  const [version, setVersion] = useState("");
+  const [version, setVersion] = useState(packageMetadata.version);
 
   useEffect(() => {
     const fetchVersion = async () => {
@@ -22,7 +23,7 @@ export const AboutSettings: React.FC = () => {
         setVersion(appVersion);
       } catch (error) {
         console.error("Failed to get app version:", error);
-        setVersion("0.1.2");
+        setVersion(packageMetadata.version);
       }
     };
 
@@ -51,6 +52,17 @@ export const AboutSettings: React.FC = () => {
           <span className="text-sm font-mono">v{version}</span>
         </SettingContainer>
 
+        <SettingContainer
+          title={t("settings.about.project.title")}
+          description={t("settings.about.project.description")}
+          grouped={true}
+          layout="stacked"
+        >
+          <div className="text-sm text-mid-gray">
+            {t("settings.about.project.details")}
+          </div>
+        </SettingContainer>
+
         <ShowWhatsNewOnUpdate descriptionMode="tooltip" grouped={true} />
 
         <SettingContainer
@@ -71,7 +83,7 @@ export const AboutSettings: React.FC = () => {
           <Button
             variant="secondary"
             size="md"
-            onClick={() => openUrl("https://github.com/cjpais/Handy")}
+            onClick={() => openUrl("https://github.com/Microck/handy-codex")}
           >
             {t("settings.about.sourceCode.button")}
           </Button>
