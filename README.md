@@ -13,6 +13,7 @@ I wanted Handy's local speech-to-text workflow with an additional Codex-powered 
 What is different here:
 
 - **Codex transcription**: choose ChatGPT / Codex from the model selector. Handy Codex reads the existing Codex `auth.json` login and sends recordings to the ChatGPT transcription endpoint. No separate API key is required.
+- **No Codex CLI quota usage**: Handy Codex uses the ChatGPT transcription endpoint directly, so recording transcription does not consume your Codex CLI quota.
 - **Local models remain available**: Whisper, Parakeet, and the existing offline workflow are still included. Codex is an additional option, not a replacement for local transcription.
 
 This is not an official Handy release and is not affiliated with or endorsed by the Handy maintainers. The fork follows upstream changes through its own repository so these additions can evolve independently.
