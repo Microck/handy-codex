@@ -30,7 +30,7 @@ For the upstream project, see [cjpais/Handy](https://github.com/cjpais/Handy). F
 1. Download the latest Handy Codex release from the [releases page](https://github.com/Microck/handy-codex/releases)
    - The upstream Homebrew cask and winget package install Handy, not Handy Codex.
 2. Install the application
-3. **macOS**: the app is not notarized, so macOS Gatekeeper will block the first launch. Right-click (or Control-click) the app and select **Open**, then click **Open** again in the dialog. You only need to do this once.
+3. **macOS**: the app is not notarized, so macOS Gatekeeper will block the first launch. Right-click (or Control-click) the app and select **Open**, then click **Open** again in the dialog. If that doesn't work (macOS Sequoia+), go to **System Settings → Privacy & Security**, scroll to Security, and click **Open Anyway**. You only need to do this once.
 4. Launch Handy and grant necessary system permissions (microphone, accessibility)
 5. Configure your preferred keyboard shortcuts in Settings
 6. Start transcribing!
